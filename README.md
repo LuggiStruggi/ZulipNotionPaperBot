@@ -18,7 +18,7 @@ Zulip-Notion linking bot that saves arxiv papers and their info in a Notion data
   Go [here](https://www.notion.so/my-integrations) and add a `new integration`. Add the `Internal Integration Secret` as `NOTION_TOKEN` to the `config.py`.
   Select the workspace of the database you want to link to as the `Associated workspace`.
 ## 5. Create a database on Notion
-  Create a database on Notion which must the following columns:
+  Create a database on Notion which must have the following columns:
   - `Name` having the Type `Title`
   - `URL` having the Type `URL`
   - `Authors` having the Type `Text`
