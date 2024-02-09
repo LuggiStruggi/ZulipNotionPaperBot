@@ -19,6 +19,7 @@ Zulip-Notion linking bot that saves arxiv papers and their info when their link 
   - `Shared by` having the Type `Text`
   - `Published` having the Type `Date`
   - `Shared`having the Type `Date`
+  - `Stream`having the Type `Multi-select`
     
   These can be in random order and additional columns can be added.
   The database id can be found in the url on Notion when being on the database page.
