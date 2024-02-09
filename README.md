@@ -1,5 +1,5 @@
 # ZulipNotionPaperBot
-Zulip-Notion linking bot that saves arxiv papers and their info when their link is posted in Zulip.
+Zulip-Notion linking bot that saves arxiv papers and their info in a Notion database when their link is posted in Zulip.
 
 # Setup steps
 ## 1. Download Repo:
