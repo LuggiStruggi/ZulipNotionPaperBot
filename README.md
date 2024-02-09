@@ -1,6 +1,12 @@
 # ZulipNotionPaperBot
 Zulip-Notion linking bot that saves arxiv papers and their info in a Notion database when their link is posted in Zulip.
 
+![Zulip](readme_images/zulip_stream.png)
+
+↓  
+
+![Notion](readme_images/notion_database.png)
+
 # Setup steps
 ## 1. Download Repo:
   Download the code of this repository to the machine you want to run the bot from
