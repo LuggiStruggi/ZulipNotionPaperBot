@@ -26,7 +26,8 @@ def add_link_to_notion(info):
         "Authors": {"rich_text": [{"text": {"content": ", ".join(info['authors'])}}]},
         "Shared by": {"rich_text": [{"text": {"content": info['sender']}}]},
         "Published": {"date": {"start": info['publish_date'], "end": None}},
-        "Shared": {"date": {"start": formatted_datetime, "end": None}}
+        "Shared": {"date": {"start": formatted_datetime, "end": None}},
+        "Stream": {"multi_select": [{"name": info['stream']}]}
     })
     return "I added the paper to Notion."
 
@@ -38,6 +39,7 @@ def handle_message(message):
         paper_info = get_arxiv_paper_info(arxiv_id)
         if paper_info:
             paper_info['sender'] = message['sender_full_name']
+            paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
             response_message = (f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n"
                                f"- **Title**: {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
                                f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
