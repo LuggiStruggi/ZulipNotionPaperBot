@@ -34,17 +34,19 @@ def add_link_to_notion(info):
 def handle_message(message):
     if message['sender_email'] == ZULIP_EMAIL:
         return
-    arxiv_id = extract_arxiv_id(message['content'])
-    if arxiv_id:
-        paper_info = get_arxiv_paper_info(arxiv_id)
-        if paper_info:
-            paper_info['sender'] = message['sender_full_name']
-            paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
-            response_message = (f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n"
-                               f"- **Title**: {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
-                               f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
-            send_message_to_zulip(response_message, message)
-            send_message_to_zulip(add_link_to_notion(paper_info), message)
+    arxiv_ids = extract_arxiv_ids(message['content'])
+    if arxiv_ids:
+        for i, arxiv_id in enumerate(arxiv_ids):
+            paper_info = get_arxiv_paper_info(arxiv_id)
+            if paper_info:
+                paper_info['sender'] = message['sender_full_name']
+                paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
+                intro = f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n" if i == 0 else ""
+                numb = f"The {i+1}. paper you shared:\n" if len(arxiv_ids) > 1 else ""
+                info = (f"- **Title**: {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
+                        f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
+                send_message_to_zulip(intro+numb+info, message)
+                send_message_to_zulip(add_link_to_notion(paper_info), message)
 
 def send_message_to_zulip(response_message, message_data):
     request = {
@@ -54,10 +56,11 @@ def send_message_to_zulip(response_message, message_data):
               }
     client.send_message(request)
 
-def extract_arxiv_id(message_content):
+def extract_arxiv_ids(message_content):
     arxiv_regex = r'(arXiv:)?(\d{4}\.\d{5})|(https?://arxiv\.org/abs/(\d{4}\.\d{5}))'
-    match = re.search(arxiv_regex, message_content)
-    return match.group(2) or match.group(4) if match else None
+    matches = re.findall(arxiv_regex, message_content)
+    arxiv_ids = [match[1] if match[1] else match[3] for match in matches if match[1] or match[3]]
+    return arxiv_ids
 
 def get_arxiv_paper_info(arxiv_id):
     url = f'http://export.arxiv.org/api/query?id_list={arxiv_id}'
