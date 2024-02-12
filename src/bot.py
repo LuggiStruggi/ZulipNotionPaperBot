@@ -80,7 +80,7 @@ def get_arxiv_paper_info(arxiv_id):
 
 
 def get_github_code(title, first_author):
-    query = f"{title}+{first_author}+in:name,description,readme"
+    query = f"{title} {first_author} in:name,description,readme"
     url = "https://api.github.com/search/repositories"
     params = {
         "q": query,
