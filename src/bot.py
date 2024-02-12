@@ -35,16 +35,20 @@ def add_link_to_notion(info):
 def handle_message(message):
     if message['sender_email'] == ZULIP_EMAIL:
         return
-    arxiv_ids = extract_arxiv_ids(message['content'])
-    if arxiv_ids:
-        for i, arxiv_id in enumerate(arxiv_ids):
-            paper_info = get_arxiv_paper_info(arxiv_id)
+    paper_ids = extract_paper_ids(message['content'])
+    if paper_ids:
+        for i, (id_type, paper_id) in enumerate(paper_ids):
+            if id_type == 'arxiv':
+                paper_info = get_arxiv_paper_info(paper_id)
+            elif id_type == 'openreview':
+                paper_info = get_openreview_paper_info(paper_id)
+
             if paper_info:
                 paper_info['github_code'] = get_github_code("+".join(paper_info['title'].split()), "+".join(paper_info['authors'][0].split())) 
                 paper_info['sender'] = message['sender_full_name']
                 paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
                 intro = f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n" if i == 0 else ""
-                numb = f"The {i+1}. paper you shared:\n" if len(arxiv_ids) > 1 else ""
+                numb = f"The {i+1}. paper you shared:\n" if len(paper_ids) > 1 else ""
                 info = (f"- **Title**: {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
                         f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
                 send_message_to_zulip(intro+numb+info, message)
@@ -62,7 +66,18 @@ def extract_arxiv_ids(message_content):
     arxiv_regex = r'(arXiv:)?(\d{4}\.\d{5})|(https?://arxiv\.org/abs/(\d{4}\.\d{5}))'
     matches = re.findall(arxiv_regex, message_content)
     arxiv_ids = [match[1] if match[1] else match[3] for match in matches if match[1] or match[3]]
-    return arxiv_ids
+    return [("arxiv", i) for i in arxiv_ids]
+
+def extract_openreview_ids(message_content):
+    openreview_regex = r'https?://openreview\.net/(forum|pdf)\?id=([A-Za-z0-9_]+)'
+    matches = re.findall(openreview_regex, message_content)
+    openreview_ids = [match[1] for match in matches]
+    return [("openreview", i) for i in openreview_ids]
+
+def extract_paper_ids(message_content):
+    arxiv_ids = extract_arxiv_ids(message_content)
+    openreview_ids = extract_openreview_ids(message_content)
+    return arxiv_ids + openreview_ids 
 
 def get_arxiv_paper_info(arxiv_id):
     url = f'http://export.arxiv.org/api/query?id_list={arxiv_id}'
@@ -77,6 +92,28 @@ def get_arxiv_paper_info(arxiv_id):
             link = entry.find('{http://www.w3.org/2005/Atom}id').text
             publish_date = entry.find('{http://www.w3.org/2005/Atom}published').text
             return {"title": title, "authors": authors, "abstract": abstract, "link": link, "publish_date": publish_date}
+
+
+def get_openreview_paper_info(openreview_id):
+    api_url = f"https://api2.openreview.net/notes?id={openreview_id}"
+    response = requests.get(api_url) 
+    if response.status_code == 200:
+        paper_data = response.json().get('notes', [])
+        if paper_data:
+            paper = paper_data[0]
+            title = paper['content']['title']['value']
+            authors = paper['content']['authors']['value']
+            abstract = paper['content']['abstract']['value']
+            link = f"https://openreview.net/forum?id={openreview_id}"
+            publish_date = datetime.utcfromtimestamp(paper.get('cdate') / 1000).isoformat() + 'Z'
+            
+            return {
+                "title": title,
+                "authors": authors,
+                "abstract": abstract,
+                "link": link,
+                "publish_date": publish_date
+            }
 
 
 def get_github_code(title, first_author):
