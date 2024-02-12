@@ -23,6 +23,7 @@ def add_link_to_notion(info):
     notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties={
         "Name": {"title": [{"text": {"content": info['title']}}]},
         "URL": {"url": info['link']},
+        "Code": {"url": info['github_code']},
         "Authors": {"rich_text": [{"text": {"content": ", ".join(info['authors'])}}]},
         "Shared by": {"rich_text": [{"text": {"content": info['sender']}}]},
         "Published": {"date": {"start": info['publish_date'], "end": None}},
@@ -39,6 +40,7 @@ def handle_message(message):
         for i, arxiv_id in enumerate(arxiv_ids):
             paper_info = get_arxiv_paper_info(arxiv_id)
             if paper_info:
+                paper_info['github_code'] = get_github_code("+".join(paper_info['title'].split()), "+".join(paper_info['authors'][0].split())) 
                 paper_info['sender'] = message['sender_full_name']
                 paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
                 intro = f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n" if i == 0 else ""
@@ -75,6 +77,22 @@ def get_arxiv_paper_info(arxiv_id):
             link = entry.find('{http://www.w3.org/2005/Atom}id').text
             publish_date = entry.find('{http://www.w3.org/2005/Atom}published').text
             return {"title": title, "authors": authors, "abstract": abstract, "link": link, "publish_date": publish_date}
+
+
+def get_github_code(title, first_author):
+    query = f"{title} {first_author} in:name,description,readme"
+    url = "https://api.github.com/search/repositories"
+    params = {
+        "q": query,
+        "sort": "stars",
+        "order": "desc"
+    }
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        data = response.json()
+        for item in data['items']:
+            return item['html_url']
+
 
 def main():
     client.call_on_each_message(lambda message: handle_message(message))
