@@ -21,6 +21,7 @@ Zulip-Notion linking bot that saves arxiv papers and their info in a Notion data
   Create a database on Notion which must have the following columns:
   - `Name` having the Type `Title`
   - `URL` having the Type `URL`
+  - `Code` having the Type `URL`
   - `Authors` having the Type `Text`
   - `Shared by` having the Type `Text`
   - `Published` having the Type `Date`
