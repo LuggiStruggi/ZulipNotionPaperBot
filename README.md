@@ -31,7 +31,9 @@ Zulip-Notion linking bot that saves arxiv papers and their info in a Notion data
   These can be in random order and additional columns can be added.
   The database id can be found in the url on Notion when being on the database page.
   The url is formatted in the following way `https://www.notion.so/{chars}/{database_id}?v={chars}`. Add the `database id` to the `config.py` as `NOTION_DATABASE_ID`.
-## 6. Run the bot
+## 6. Add the connection to the database
+  Click the three dots in the upper right on your database and then under `Add connections` add your new connection.
+## 7. Run the bot
   You can run the bot using `python bot.py` from the `src` folder.
   
 
