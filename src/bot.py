@@ -23,7 +23,7 @@ def add_link_to_notion(info):
     notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties={
         "Name": {"title": [{"text": {"content": info['title']}}]},
         "URL": {"url": info['link']},
-        "Code": {"url": info['github_code']},
+        "Code": {"url": info['github_repo']},
         "Authors": {"rich_text": [{"text": {"content": ", ".join(info['authors'])}}]},
         "Shared by": {"rich_text": [{"text": {"content": info['sender']}}]},
         "Published": {"date": {"start": info['publish_date'], "end": None}},
@@ -44,14 +44,15 @@ def handle_message(message):
                 paper_info = get_openreview_paper_info(paper_id)
 
             if paper_info:
-                paper_info['github_code'] = get_github_code("+".join(paper_info['title'].split()), "+".join(paper_info['authors'][0].split())) 
+                paper_info['github_repo'] = get_github_repo(paper_id) if id_type == 'arxiv' else None 
                 paper_info['sender'] = message['sender_full_name']
                 paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
                 intro = f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n" if i == 0 else ""
                 numb = f"The {i+1}. paper you shared:\n" if len(paper_ids) > 1 else ""
                 info = (f"- **Title**: {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
                         f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
-                send_message_to_zulip(intro+numb+info, message)
+                github = f"\n- **Official GitHub**: {paper_info['github_repo']}" if paper_info['github_repo'] is not None else ''
+                send_message_to_zulip(intro+numb+info+github, message)
                 send_message_to_zulip(add_link_to_notion(paper_info), message)
 
 def send_message_to_zulip(response_message, message_data):
@@ -106,30 +107,40 @@ def get_openreview_paper_info(openreview_id):
             abstract = paper['content']['abstract']['value']
             link = f"https://openreview.net/forum?id={openreview_id}"
             publish_date = datetime.utcfromtimestamp(paper.get('cdate') / 1000).isoformat() + 'Z'
-            
-            return {
-                "title": title,
-                "authors": authors,
-                "abstract": abstract,
-                "link": link,
-                "publish_date": publish_date
-            }
+            return {"title": title, "authors": authors, "abstract": abstract, "link": link, "publish_date": publish_date}
 
 
-def get_github_code(title, first_author):
-    query = f"{title} {first_author} in:name,description,readme"
-    url = "https://api.github.com/search/repositories"
-    params = {
-        "q": query,
-        "sort": "stars",
-        "order": "desc"
-    }
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        data = response.json()
-        for item in data['items']:
-            return item['html_url']
+# get the code of the paper
 
+def get_all_repositories(paper_id):
+    base_url = f"https://paperswithcode.com/api/v1/papers/{paper_id}/repositories/"
+    repositories = []
+    while base_url:
+        response = requests.get(base_url)
+        if response.status_code == 200:
+            data = response.json()
+            repositories.extend(data.get('results', []))
+            base_url = data.get('next')
+        else:
+            break
+    return repositories
+
+def get_official_repositories(paper_id):
+    all_repositories = get_all_repositories(paper_id)
+    official_repos = [repo for repo in all_repositories if repo.get('is_official') == True]
+    return official_repos
+
+def get_github_repo(arxiv_id):
+    arxiv_id = arxiv_id.split("v")[0]
+    url = f"https://paperswithcode.com/api/v1/papers/?arxiv_id={arxiv_id}"
+    response = requests.get(url)
+    papers = response.json()
+    if response.status_code == 200 and papers['results']:
+        paper_id = papers['results'][0]['id']
+        official_repos = get_official_repositories(paper_id)
+        if official_repos:
+            github_url = official_repos[0]['url']
+            return github_url
 
 def main():
     client.call_on_each_message(lambda message: handle_message(message))
