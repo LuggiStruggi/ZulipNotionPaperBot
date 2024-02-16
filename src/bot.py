@@ -11,9 +11,11 @@ client = zulip.Client(email=ZULIP_EMAIL, api_key=ZULIP_API_KEY, site=ZULIP_SITE)
 notion = Client(auth=NOTION_TOKEN)
 local_timezone = pytz.timezone('Europe/Berlin')
 
+
 def check_exists(url):
     query_results = notion.databases.query(database_id=NOTION_DATABASE_ID, filter={"property": "URL", "url": {"equals": url}})
     return len(query_results["results"]) > 0
+
 
 def add_link_to_notion(info):
     if check_exists(info['link']):
@@ -31,6 +33,7 @@ def add_link_to_notion(info):
         "Stream": {"multi_select": [{"name": info['stream']}]}
     })
     return "I added the paper to Notion."
+
 
 def handle_message(message):
     if message['sender_email'] == ZULIP_EMAIL:
@@ -55,6 +58,7 @@ def handle_message(message):
                 send_message_to_zulip(intro+numb+info+github, message)
                 send_message_to_zulip(add_link_to_notion(paper_info), message)
 
+
 def send_message_to_zulip(response_message, message_data):
     request = {
                "type": message_data['type'], "to": message_data['sender_email'] if message_data['type'] == 'private' else message_data['display_recipient'],
@@ -62,6 +66,30 @@ def send_message_to_zulip(response_message, message_data):
                "content": response_message
               }
     client.send_message(request)
+
+
+def count_backticks_in_quote(line):
+    match = re.match(r'^(`+)(quote)', line)
+    return len(match.group(1)) if match else 0
+
+
+def filter_zulip_quotes(content):
+    lines = content.split('\n')
+    out = []
+    n_lines = len(lines)
+    i = 0
+    while i < n_lines:
+        ticks = count_backticks_in_quote(lines[i])
+        if ticks:
+            out.pop(-1)
+            i += 1
+            while '`'*ticks not in lines[i]:
+                i += 1
+        else:
+            out.append(lines[i])
+        i += 1
+    return "\n".join(out)
+ 
 
 def extract_arxiv_ids(message_content):
     arxiv_regex = r'(arXiv:)?(\d{4}\.\d{5})|(https?://arxiv\.org/abs/(\d{4}\.\d{5}))'
@@ -76,6 +104,7 @@ def extract_openreview_ids(message_content):
     return [("openreview", i) for i in openreview_ids]
 
 def extract_paper_ids(message_content):
+    message_content = filter_zulip_quotes(message_content)
     arxiv_ids = extract_arxiv_ids(message_content)
     openreview_ids = extract_openreview_ids(message_content)
     return arxiv_ids + openreview_ids 
