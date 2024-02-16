@@ -22,8 +22,8 @@ Zulip-Notion linking bot that saves papers (currently arxiv & openreview) and th
   - `Name` having the Type `Title`
   - `URL` having the Type `URL`
   - `Code` having the Type `URL`
-  - `Authors` having the Type `Text`
-  - `Shared by` having the Type `Text`
+  - `Authors` having the Type `Multi-select`
+  - `Shared by` having the Type `Multi-select`
   - `Published` having the Type `Date`
   - `Shared`having the Type `Date`
   - `Stream`having the Type `Multi-select`
