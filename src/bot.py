@@ -14,25 +14,45 @@ local_timezone = pytz.timezone('Europe/Berlin')
 
 def check_exists(url):
     query_results = notion.databases.query(database_id=NOTION_DATABASE_ID, filter={"property": "URL", "url": {"equals": url}})
-    return len(query_results["results"]) > 0
+    if query_results['results']:
+        return query['results'][0]['id']
 
 
 def add_link_to_notion(info):
-    if check_exists(info['link']):
-        return "This paper already exists in Notion."
+    query_response = notion.databases.query(**{"database_id": NOTION_DATABASE_ID, "filter": {"property": "URL", "url": {"equals": info['link']}}})
     current_datetime = datetime.now(local_timezone)
-    formatted_datetime = current_datetime.isoformat()     
-    notion.pages.create(parent={"database_id": NOTION_DATABASE_ID}, properties={
-        "Name": {"title": [{"text": {"content": info['title']}}]},
-        "URL": {"url": info['link']},
-        "Code": {"url": info['github_repo']},
-        "Authors": {"rich_text": [{"text": {"content": ", ".join(info['authors'])}}]},
-        "Shared by": {"rich_text": [{"text": {"content": info['sender']}}]},
-        "Published": {"date": {"start": info['publish_date'], "end": None}},
-        "Shared": {"date": {"start": formatted_datetime, "end": None}},
-        "Stream": {"multi_select": [{"name": info['stream']}]}
-    })
-    return "I added the paper to Notion."
+    formatted_datetime = current_datetime.isoformat() 
+    if query_response['results']:
+        page_id = query_response['results'][0]['id']
+        current_page = notion.pages.retrieve(page_id=page_id)
+        existing_streams = [tag['name'] for tag in current_page['properties']['Stream']['multi_select']]
+        existing_people = [tag['name'] for tag in current_page['properties']['Shared by']['multi_select']]
+        combined_streams = list(set(existing_streams + [info['stream']]))
+        combined_people = list(set(existing_people + [info['sender']]))
+        notion.pages.update(
+            page_id=page_id,
+            properties={
+                "Stream": {"multi_select": [{"name": tag} for tag in combined_streams]},
+                "Shared by": {"multi_select": [{"name": tag} for tag in combined_people]},
+                "Shared": {"date": {"start": formatted_datetime, "end": None}}
+            }
+        )
+        return f"The paper already existed in Notion from the following streams: {', '.join(existing_streams)}. I updated it."
+    else:
+        notion.pages.create(
+            parent={"database_id": NOTION_DATABASE_ID},
+            properties={
+                "Name": {"title": [{"text": {"content": info['title']}}]},
+                "URL": {"url": info['link']},
+                "Code": {"url": info['github_repo']},
+                "Authors": {"multi_select": [{"name": author} for author in info['authors']]},
+                "Shared by": {"multi_select": [{"name": info['sender']}]},
+                "Published": {"date": {"start": info['publish_date'], "end": None}},
+                "Shared": {"date": {"start": formatted_datetime, "end": None}},
+                "Stream": {"multi_select": [{"name": info['stream']}]}
+           }
+        )
+        return "I added the paper to Notion."
 
 
 def handle_message(message):
