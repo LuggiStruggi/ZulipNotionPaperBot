@@ -25,8 +25,9 @@ Zulip-Notion linking bot that saves papers (currently arxiv & openreview) and th
   - `Authors` having the Type `Multi-select`
   - `Shared by` having the Type `Multi-select`
   - `Published` having the Type `Date`
-  - `Shared`having the Type `Date`
-  - `Stream`having the Type `Multi-select`
+  - `Shared` having the Type `Date`
+  - `Stream` having the Type `Multi-select`
+  - `BibTeX` having the Type `Text`
     
   These can be in random order and additional columns can be added.
   The database id can be found in the url on Notion when being on the database page.
