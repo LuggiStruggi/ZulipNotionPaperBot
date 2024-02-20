@@ -59,10 +59,12 @@ def add_link_to_notion(info):
 def get_bibtex(paper_info):
     year = str(datetime.fromisoformat(paper_info['publish_date'].rstrip('Z')).year)
     bib_id = paper_info['authors'][0].split(' ')[1].lower() + year + paper_info['title'].split(' ')[0].lower()
-    return (f"@article{{{bib_id}}},\n"
-            f"          title={{{paper_info['title']}}},\n"
-            f"          author={{{' and '.join(paper_info['authors'])}}},\n"
-            f"          year={{{year}}}\n}}")
+    return (f"@article{{{bib_id},\n"
+            f"         title={{{paper_info['title']}}},\n"
+            f"         author={{{' and '.join(paper_info['authors'])}}},\n"
+            f"         year={{{year}}},\n"
+            f"         url={{{paper_info['link']}}}\n"
+            "}")
 
 def handle_message(message):
     if message['sender_email'] == ZULIP_EMAIL:
