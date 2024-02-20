@@ -49,11 +49,20 @@ def add_link_to_notion(info):
                 "Shared by": {"multi_select": [{"name": info['sender']}]},
                 "Published": {"date": {"start": info['publish_date'], "end": None}},
                 "Shared": {"date": {"start": formatted_datetime, "end": None}},
-                "Stream": {"multi_select": [{"name": info['stream']}]}
+                "Stream": {"multi_select": [{"name": info['stream']}]},
+                "BibTeX": {"rich_text": [{"type": "text", "text": {"content": info['bibtex']}}]},
            }
         )
         return "I added the paper to Notion."
 
+
+def get_bibtex(paper_info):
+    year = str(datetime.fromisoformat(paper_info['publish_date'].rstrip('Z')).year)
+    bib_id = paper_info['authors'][0].split(' ')[1].lower() + year + paper_info['title'].split(' ')[0].lower()
+    return (f"@article{{{bib_id}}},\n"
+            f"          title={{{paper_info['title']}}},\n"
+            f"          author={{{' and '.join(paper_info['authors'])}}},\n"
+            f"          year={{{year}}}\n}}")
 
 def handle_message(message):
     if message['sender_email'] == ZULIP_EMAIL:
@@ -65,6 +74,8 @@ def handle_message(message):
                 paper_info = get_arxiv_paper_info(paper_id)
             elif id_type == 'openreview':
                 paper_info = get_openreview_paper_info(paper_id)
+        
+            paper_info['bibtex'] = get_bibtex(paper_info)
 
             if paper_info:
                 paper_info['github_repo'] = get_github_repo(paper_id) if id_type == 'arxiv' else None 
