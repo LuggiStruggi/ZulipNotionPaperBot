@@ -75,8 +75,9 @@ def handle_message(message):
                 info = (f"- **Title**: {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
                         f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
                 github = f"\n- **Official GitHub**: {paper_info['github_repo']}" if paper_info['github_repo'] is not None else ''
-                send_message_to_zulip(intro+numb+info+github, message)
-                send_message_to_zulip(add_link_to_notion(paper_info), message)
+                added_link = "\n\n" + add_link_to_notion(paper_info)
+                send_message_to_zulip(intro+numb+info+github+added_link, message)
+                #send_message_to_zulip(add_link_to_notion(paper_info), message)
 
 
 def send_message_to_zulip(response_message, message_data):
