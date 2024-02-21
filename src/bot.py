@@ -58,13 +58,20 @@ def add_link_to_notion(info):
 
 def get_bibtex(paper_info):
     year = str(datetime.fromisoformat(paper_info['publish_date'].rstrip('Z')).year)
-    bib_id = paper_info['authors'][0].split(' ')[1].lower() + year + paper_info['title'].split(' ')[0].lower()
-    return (f"@article{{{bib_id},\n"
-            f"         title={{{paper_info['title']}}},\n"
-            f"         author={{{' and '.join(paper_info['authors'])}}},\n"
-            f"         year={{{year}}},\n"
-            f"         url={{{paper_info['link']}}}\n"
-            "}")
+    bib_id = paper_info['authors'][0].split(' ')[1].lower() + year + re.sub(r'[^a-zA-Z]*$', '', paper_info['title'].split(' ')[0].lower())
+    bib = (f"@misc{{{bib_id},\n"
+           f"      title = {{{paper_info['title']}}},\n"
+           f"      author = {{{' and '.join(', '.join([a.split()[-1], ' '.join(a.split()[:-1])]) for a in paper_info['authors'])}}},\n"
+           f"      year = {{{year}}},\n"
+           f"      url = {{{paper_info['link']}}}")
+    if paper_info['type'] == 'arxiv':
+        add = (",\n"
+               f"      eprint = {{{paper_info['id']}}},\n"
+               f"      archivePrefix = {{arXiv}},\n"
+               f"      primaryClass = {{{paper_info['category']}}}\n")
+    else:
+        add = "\n"
+    return bib + add + "}"
 
 def handle_message(message):
     if message['sender_email'] == ZULIP_EMAIL:
@@ -76,9 +83,8 @@ def handle_message(message):
                 paper_info = get_arxiv_paper_info(paper_id)
             elif id_type == 'openreview':
                 paper_info = get_openreview_paper_info(paper_id)
-        
-            paper_info['bibtex'] = get_bibtex(paper_info)
 
+            paper_info['bibtex'] = get_bibtex(paper_info)
             if paper_info:
                 paper_info['github_repo'] = get_github_repo(paper_id) if id_type == 'arxiv' else None 
                 paper_info['sender'] = message['sender_full_name']
@@ -155,23 +161,35 @@ def get_arxiv_paper_info(arxiv_id):
             abstract = entry.find('{http://www.w3.org/2005/Atom}summary').text.strip()
             link = entry.find('{http://www.w3.org/2005/Atom}id').text
             publish_date = entry.find('{http://www.w3.org/2005/Atom}published').text
-            return {"title": title, "authors": authors, "abstract": abstract, "link": link, "publish_date": publish_date}
+            category_element = entry.find('{http://www.w3.org/2005/Atom}category')
+            if category_element is not None:
+                primary_category = category_element.attrib.get('term', '')
+            else:
+                primary_category = None
+            return {"title": title, "authors": authors, "abstract": abstract, "link": link, "publish_date": publish_date, "type": "arxiv", "id": arxiv_id, "category": primary_category}
 
-
-def get_openreview_paper_info(openreview_id):
-    api_url = f"https://api2.openreview.net/notes?id={openreview_id}"
-    response = requests.get(api_url) 
+def get_openreview_paper_info_from_response(response, openreview_id, api2 = True):
     if response.status_code == 200:
         paper_data = response.json().get('notes', [])
         if paper_data:
             paper = paper_data[0]
-            title = paper['content']['title']['value']
-            authors = paper['content']['authors']['value']
-            abstract = paper['content']['abstract']['value']
+            title = paper['content']['title']['value'] if api2 else paper['content']['title']
+            authors = paper['content']['authors']['value'] if api2 else paper['content']['authors']
+            abstract = paper['content']['abstract']['value'] if api2 else paper['content']['abstract']
             link = f"https://openreview.net/forum?id={openreview_id}"
             publish_date = datetime.utcfromtimestamp(paper.get('cdate') / 1000).isoformat() + 'Z'
-            return {"title": title, "authors": authors, "abstract": abstract, "link": link, "publish_date": publish_date}
+            return {"title": title, "authors": authors, "abstract": abstract, "link": link, "publish_date": publish_date, "type": "openreview"}
 
+
+def get_openreview_paper_info(openreview_id):
+    api_url = f"https://api2.openreview.net/notes?id={openreview_id}"
+    response = requests.get(api_url)
+    paper_info = get_openreview_paper_info_from_response(response, openreview_id)
+    if paper_info is None:
+        api_url = f"https://api.openreview.net/notes?id={openreview_id}"
+        response = requests.get(api_url)
+        paper_info = get_openreview_paper_info_from_response(response, openreview_id, api2 = False)
+    return paper_info    
 
 # get the code of the paper
 
