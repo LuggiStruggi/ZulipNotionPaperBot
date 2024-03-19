@@ -6,23 +6,37 @@ class zoteroHandler:
 
     def __init__(self, group_id, api_key, zotero_type='group'):
         self.client = zotero.Zotero(group_id, zotero_type, api_key)
+        col = self.client.collections()
+        self.collections = {c['data']['name']: c['key'] for c in col}
 
     def update_db(self, info):
+
+        if info['stream'] not in self.collections:
+            response = self.client.create_collections([{'name': info['stream']}])
+            self.collections[info['stream']] = response['successful']['0']['key']
 
         items = self.client.everything(self.client.items())
         items = [item for item in items if 'data' in item and 'url' in item['data'] and info['link'] in item['data']['url']]
         if items:
             item = items[0]
             item_id = item['key']
+            
             existing_tags = item['data'].get('tags', [])
-
-            new_tags = [{'tag': info['stream']}, {'tag': info['sender']}]
+            new_tags = [{'tag': info['sender']}]
 
             for new_tag in new_tags:
                 if new_tag not in existing_tags:
                     existing_tags.append(new_tag)
 
             item['data']['tags'] = existing_tags
+
+            existing_collections = item['data'].get('collections', [])
+            new_collection = self.collections[info['stream']]
+
+            if new_collection not in existing_collections:
+                existing_collections.append(new_collection)
+
+            item['data']['collections'] = existing_collections
 
             self.client.update_item(item)
             return_text = f"The item already existed in Zotero. I updated it."
@@ -35,6 +49,7 @@ class zoteroHandler:
                 'date': str(info['year']),
                 'tags': [{'tag': info['stream']}, {'tag': info['sender']}],
                 'abstractNote': info['abstract'],
+                'collections': [self.collections[info['stream']]],
             }
             created_items = self.client.create_items([new_item])
             if created_items:
