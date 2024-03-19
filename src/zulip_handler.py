@@ -37,7 +37,7 @@ class zulipHandler:
                             f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
                     github = f"\n- **Official GitHub**: {paper_info['github_repo']}" if 'github_repo' in paper_info and paper_info['github_repo'] is not None else ''
 
-                    added_link = ""
+                    added_link = "\n"
                     for database_handler in self.database_handlers: 
                         added_link += "\n" + database_handler.update_db(paper_info)
 
