@@ -77,15 +77,25 @@ class notionHandler:
             existing_streams = [tag['name'] for tag in current_page['properties']['Zulip stream(s) source']['multi_select']]
             existing_people = [tag['name'] for tag in current_page['properties']['Shared on Zulip by']['multi_select']]
             existing_sources = [tag['name'] for tag in current_page['properties']['Source']['multi_select']]
+            
+            # Assuming 'Comments' is a rich text property, we need to handle it correctly.
+            # Initialize existing comments as an empty string if the property doesn't exist or is empty.
+            existing_comments = ""
+            if 'Comments' in current_page['properties'] and 'rich_text' in current_page['properties']['Comments']:
+                existing_comments = "".join([rt['plain_text'] for rt in current_page['properties']['Comments']['rich_text']])
+            
             combined_streams = list(set(existing_streams + [info['stream']]))
             combined_people = list(set(existing_people + [info['sender']]))
             combined_sources = list(set(existing_sources + ['Zulip']))
+            combined_comments = existing_comments + ("\n-----------------------\n" if existing_comments else '') + f"{info['sender']} [{info['stream']}]: {info['message_content']}"
+            
             self.client.pages.update(
                 page_id=page_id,
                 properties={
                     "Zulip stream(s) source": {"multi_select": [{"name": tag} for tag in combined_streams]},
                     "Shared on Zulip by": {"multi_select": [{"name": tag} for tag in combined_people]},
                     "Source": {"multi_select": [{"name": tag} for tag in combined_sources]},
+                    "Comments": {"rich_text": [{"text": {"content": combined_comments}}]},  # Update this line for rich text
                 }
             )
             return f"The paper already existed in Notion from the following streams: {', '.join(existing_streams)}. I updated it."
@@ -102,6 +112,7 @@ class notionHandler:
                     "Zulip stream(s) source": {"multi_select": [{"name": info['stream']}]},
                     "BibTeX": {"rich_text": [{"type": "text", "text": {"content": info['bibtex']}}]},
                     "Source": {"multi_select": [{"name": "Zulip"}]},
-               }
+                    "Comments": {"rich_text": [{"text": {"content": f"{info['sender']} [{info['stream']}]: {info['message_content']}"}}]},
+                }
             )
             return "I added the paper to Notion."
