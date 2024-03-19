@@ -47,7 +47,7 @@ class zoteroHandler:
                 'creators': [{'creatorType': 'author', 'firstName': ' '.join(author.split(' ')[:-1]), 'lastName': author.split(' ')[-1]} for author in info['authors']],  # Adjust as needed
                 'url': info['link'],
                 'date': str(info['year']),
-                'tags': [{'tag': info['stream']}, {'tag': info['sender']}],
+                'tags': [{'tag': info['sender']}],
                 'abstractNote': info['abstract'],
                 'collections': [self.collections[info['stream']]],
             }
