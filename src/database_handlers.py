@@ -52,11 +52,13 @@ class zoteroHandler:
                 'collections': [self.collections[info['stream']]],
             }
             created_items = self.client.create_items([new_item])
-            if created_items:
+            if created_items and '0' in created_items['successful']:
                 item_id = created_items['successful']['0']['key']
                 action_note_content = "This item was newly added to Zotero."
                 action = "added"
                 return_text = "I added the item to Zotero."
+            else:
+                return "I Failed to add the paper to Zotero."
             if info.get('github_repo') is not None:
                 linked_url = {
                     'itemType': 'attachment',
