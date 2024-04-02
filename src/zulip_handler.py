@@ -24,7 +24,11 @@ class zulipHandler:
         for paper_handler in self.paper_handlers:
             paper_ids = paper_handler.extract_ids(message_filtered)
             for i, paper_id in enumerate(paper_ids):
-                paper_info = paper_handler.get_info(paper_id)
+                try:
+                    paper_info = paper_handler.get_info(paper_id)
+                except:
+                    print("Wasn't able to receive paper info")
+                    continue
                 if paper_info:
 
                     paper_info['sender'] = message['sender_full_name']
@@ -38,8 +42,12 @@ class zulipHandler:
                     github = f"\n- **Official GitHub**: {paper_info['github_repo']}" if 'github_repo' in paper_info and paper_info['github_repo'] is not None else ''
 
                     added_link = "\n"
-                    for database_handler in self.database_handlers: 
-                        added_link += "\n" + database_handler.update_db(paper_info)
+                    for database_handler in self.database_handlers:
+                        try:
+                            added_link += "\n" + database_handler.update_db(paper_info)
+                        except:
+                            print("Wasn't able to add paper to database")
+                            continue
 
                     self.send_message_to_zulip(intro+number+info+github+added_link, message)
 
