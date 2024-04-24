@@ -77,7 +77,8 @@ class zulipHandler:
         while i < n_lines:
             ticks = self.count_backticks_in_quote(lines[i])
             if ticks:
-                out.pop(-1)
+                if out:
+                    out.pop(-1)
                 i += 1
                 while '`'*ticks not in lines[i]:
                     i += 1
