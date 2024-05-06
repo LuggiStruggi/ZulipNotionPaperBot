@@ -37,10 +37,9 @@ class zulipHandler:
 
                     intro = f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n" if i == 0 else ""
                     number = f"The {i+1}. paper you shared:\n" if len(paper_ids) > 1 else ""
-                    info = (f"- **Title**: {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
+                    info = (f"```spoiler {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
                             f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
-                    github = f"\n- **Official GitHub**: {paper_info['github_repo']}" if 'github_repo' in paper_info and paper_info['github_repo'] is not None else ''
-
+                    github = f"\n- **Official GitHub**: {paper_info['github_repo']}\n```" if 'github_repo' in paper_info and paper_info['github_repo'] is not None else '\n```'
                     added_link = "\n"
                     for database_handler in self.database_handlers:
                         try:
