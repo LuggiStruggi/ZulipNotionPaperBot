@@ -53,7 +53,6 @@ class arxiveHandler(paperHandler):
             title = entry.find('{http://www.w3.org/2005/Atom}title').text.strip()
             authors = [author.find('{http://www.w3.org/2005/Atom}name').text for author in entry.findall('{http://www.w3.org/2005/Atom}author')]
             abstract = entry.find('{http://www.w3.org/2005/Atom}summary').text.strip().replace("\n", " ")
-            print(repr(abstract))
             link = entry.find('{http://www.w3.org/2005/Atom}id').text
             publish_date = entry.find('{http://www.w3.org/2005/Atom}published').text
             category_element = entry.find('{http://www.w3.org/2005/Atom}category')
