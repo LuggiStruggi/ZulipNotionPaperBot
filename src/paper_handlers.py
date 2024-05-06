@@ -50,7 +50,7 @@ class arxiveHandler(paperHandler):
         root = ET.fromstring(response.content)
         entry = root.find('{http://www.w3.org/2005/Atom}entry')
         if entry:
-            title = entry.find('{http://www.w3.org/2005/Atom}title').text.strip()
+            title = entry.find('{http://www.w3.org/2005/Atom}title').text.strip().replace("\n", " ")
             authors = [author.find('{http://www.w3.org/2005/Atom}name').text for author in entry.findall('{http://www.w3.org/2005/Atom}author')]
             abstract = entry.find('{http://www.w3.org/2005/Atom}summary').text.strip().replace("\n", " ")
             link = entry.find('{http://www.w3.org/2005/Atom}id').text
@@ -124,7 +124,7 @@ class openreviewHandler(paperHandler):
         paper_data = response.json().get('notes', [])
         if paper_data:
             paper = paper_data[0]
-            title = paper['content']['title']['value'] if api2 else paper['content']['title']
+            title = paper['content']['title']['value'] if api2 else paper['content']['title'].replace("\n" " ")
             authors = paper['content']['authors']['value'] if api2 else paper['content']['authors']
             abstract = paper['content']['abstract']['value'].replace("\n", " ") if api2 else paper['content']['abstract'].replace("\n", " ")
             link = f"https://openreview.net/forum?id={openreview_id}"
