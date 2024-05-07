@@ -2,6 +2,10 @@ import zulip
 from datetime import datetime
 import re
 
+def replace_single_dollar(s):
+    pattern = r'(?<!\$)\$(?!\$)'
+    return re.sub(pattern, '$$', s)
+
 class zulipHandler:
 
     def __init__(self, email, api_key, site, paper_handlers = None, database_handlers = None):
@@ -15,15 +19,31 @@ class zulipHandler:
         if self.database_handlers is None:
             self.database_handlers = []
 
+    def info_to_message(self, title, authors, abstract, link, github=None):
+        message = f"``` spoiler {title}\n- **Authors**: {', '.join(authors)}\n- **Abstract**: {replace_single_dollar(abstract)}\n- **Link**: {link}\n"
+        if github is not None:
+            message += f"- **Official GitHub**: {github}\n"
+        message += "```"
+        return message
 
+    def try_update_databases(self, paper_info):
+        response_msg = ""
+        for database_handler in self.database_handlers:
+            try:
+                response_msg += "\n" + database_handler.update_db(paper_info)
+            except:
+                print("Wasn't able to add paper to database")
+                continue
+        return response_msg
 
     def handle_message(self, message):
         if message['sender_email'] == self.email:
             return
         message_filtered = self.filter_zulip_quotes(message['content'])
-        for paper_handler in self.paper_handlers:
+        
+        for i, paper_handler in enumerate(self.paper_handlers):
             paper_ids = paper_handler.extract_ids(message_filtered)
-            for i, paper_id in enumerate(paper_ids):
+            for j, paper_id in enumerate(paper_ids):
                 try:
                     paper_info = paper_handler.get_info(paper_id)
                 except:
@@ -35,20 +55,11 @@ class zulipHandler:
                     paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
                     paper_info['message_content'] = message['content']
 
-                    intro = f"Thank you for sharing, {message['sender_full_name']} 😎! Here is a short overview:\n" if i == 0 else ""
-                    number = f"The {i+1}. paper you shared:\n" if len(paper_ids) > 1 else ""
-                    info = (f"```spoiler {paper_info['title']}\n- **Authors**: {', '.join(paper_info['authors'])}\n"
-                            f"- **Abstract**: {paper_info['abstract']}\n- **Link**: {paper_info['link']}")
-                    github = f"\n- **Official GitHub**: {paper_info['github_repo']}\n```" if 'github_repo' in paper_info and paper_info['github_repo'] is not None else '\n```'
-                    added_link = "\n"
-                    for database_handler in self.database_handlers:
-                        try:
-                            added_link += "\n" + database_handler.update_db(paper_info)
-                        except:
-                            print("Wasn't able to add paper to database")
-                            continue
-
-                    self.send_message_to_zulip(intro+number+info+github+added_link, message)
+                    intro = f"{message['sender_full_name']} shared:\n" if i+j == 0 else ""
+                    info = self.info_to_message(paper_info['title'], paper_info['authors'], paper_info['abstract'], paper_info['link'], paper_info.get('github'))
+                    update = self.try_update_databases(paper_info)
+                                    
+                    self.send_message_to_zulip(intro+info+update, message)
 
 
     def send_message_to_zulip(self, response_message, message_data):
