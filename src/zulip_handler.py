@@ -40,10 +40,10 @@ class zulipHandler:
         if message['sender_email'] == self.email:
             return
         message_filtered = self.filter_zulip_quotes(message['content'])
-        
-        for i, paper_handler in enumerate(self.paper_handlers):
+        count = 0
+        for paper_handler in self.paper_handlers:
             paper_ids = paper_handler.extract_ids(message_filtered)
-            for j, paper_id in enumerate(paper_ids):
+            for paper_id in paper_ids:
                 try:
                     paper_info = paper_handler.get_info(paper_id)
                 except:
@@ -55,10 +55,10 @@ class zulipHandler:
                     paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
                     paper_info['message_content'] = message['content']
 
-                    intro = f"{message['sender_full_name']} shared:\n" if i+j == 0 else ""
+                    intro = f"{message['sender_full_name']} shared:\n" if count == 0 else ""
                     info = self.info_to_message(paper_info['title'], paper_info['authors'], paper_info['abstract'], paper_info['link'], paper_info.get('github'))
                     update = self.try_update_databases(paper_info)
-                                    
+                    count += 1
                     self.send_message_to_zulip(intro+info+update, message)
 
 
