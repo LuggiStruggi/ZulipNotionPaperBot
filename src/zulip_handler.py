@@ -28,11 +28,13 @@ class zulipHandler:
 
     def try_update_databases(self, paper_info):
         response_msg = ""
-        for database_handler in self.database_handlers:
+        for handler_wrapper in self.database_handlers:
             try:
-                response_msg += "\n" + database_handler.update_db(paper_info)
-            except:
-                print("Wasn't able to add paper to database")
+                update_result = handler_wrapper.update_db(paper_info)
+                response_msg += "\n" + update_result
+            except Exception as e:
+                print(f"Warning: Failed to update database {handler_wrapper.handler_class.__name__}. Exception: {e}")
+                response_msg += f"\nFailed to update {handler_wrapper.handler_class.__name__}."
                 continue
         return response_msg
 
