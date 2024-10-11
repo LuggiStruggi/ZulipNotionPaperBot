@@ -80,7 +80,6 @@ class zulipHandler:
         match = re.match(r'^(`+)(quote)', line)
         return len(match.group(1)) if match else 0
 
-
     def filter_zulip_quotes(self, content):
         lines = content.split('\n')
         out = []
@@ -92,13 +91,12 @@ class zulipHandler:
                 if out:
                     out.pop(-1)
                 i += 1
-                while '`'*ticks not in lines[i]:
+                while i < n_lines and '`'*ticks not in lines[i]:
                     i += 1
             else:
                 out.append(lines[i])
             i += 1
         return "\n".join(out)
-
 
     def paper_info_to_bibtex(self, paper_info):
         year = str(datetime.fromisoformat(paper_info['publish_date'].rstrip('Z')).year)
