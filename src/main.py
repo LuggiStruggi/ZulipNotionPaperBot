@@ -1,5 +1,3 @@
-# main.py
-
 from zulip_handler import zulipHandler
 from database_handlers import notionHandler, zoteroHandler
 from paper_handlers import arxiveHandler, openreviewHandler
