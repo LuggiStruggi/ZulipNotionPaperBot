@@ -1,6 +1,7 @@
 import zulip
 from datetime import datetime
 import re
+import threading
 
 def replace_single_dollar(s):
     pattern = r'(?<!\$)\$(?!\$)'
@@ -41,27 +42,80 @@ class zulipHandler:
     def handle_message(self, message):
         if message['sender_email'] == self.email:
             return
+
         message_filtered = self.filter_zulip_quotes(message['content'])
-        count = 0
+
+        # Extract paper IDs from all paper handlers.
+        all_paper_ids = []
+        for paper_handler in self.paper_handlers:
+            ids = paper_handler.extract_ids(message_filtered)
+            all_paper_ids.extend(ids)
+
+        if not all_paper_ids:
+            return
+
+        # Process each paper id separately.
         for paper_handler in self.paper_handlers:
             paper_ids = paper_handler.extract_ids(message_filtered)
             for paper_id in paper_ids:
+                # Send an initial message for this paper ID.
+                initial_feedback = (
+                    f"*Retrieving paper information...*"
+                )
+                request = {
+                    "type": message['type'],
+                    "to": message['sender_email'] if message['type'] == 'private' else message['display_recipient'],
+                    "subject": message.get('subject', ''),
+                    "content": initial_feedback
+                }
+                response = self.client.send_message(request)
+                initial_message_id = response.get('id')
+
                 try:
                     paper_info = paper_handler.get_info(paper_id)
-                except:
-                    print("Wasn't able to receive paper info")
+                except Exception as e:
+                    error_feedback = f"Failed to retrieve info for paper ID {paper_id}. Error: {e}"
+                    self.client.update_message({"message_id": initial_message_id, "content": error_feedback})
                     continue
-                if paper_info:
 
-                    paper_info['sender'] = message['sender_full_name']
-                    paper_info['stream'] = message['display_recipient'] if message['type'] == 'stream' else None
-                    paper_info['message_content'] = message['content']
+                if not paper_info:
+                    no_info_feedback = f"No info returned for ID {paper_id}."
+                    self.client.update_message({"message_id": initial_message_id, "content": no_info_feedback})
+                    continue
 
-                    intro = f"{message['sender_full_name']} shared:\n" if count == 0 else ""
-                    info = self.info_to_message(paper_info['title'], paper_info['authors'], paper_info['abstract'], paper_info['link'], paper_info.get('github'))
-                    update = self.try_update_databases(paper_info)
-                    count += 1
-                    self.send_message_to_zulip(intro+info+update, message)
+                detailed_info = self.info_to_message(
+                    paper_info['title'],
+                    paper_info['authors'],
+                    paper_info['abstract'],
+                    paper_info['link'],
+                    paper_info.get('github')
+                )
+                detailed_message = f"{message['sender_full_name']} shared:\n{detailed_info}"
+                self.client.update_message({"message_id": initial_message_id, "content": detailed_message})
+
+                def update_and_notify(info, orig_message):
+                    info['sender'] = orig_message['sender_full_name']
+                    info['stream'] = (orig_message['display_recipient']
+                                      if orig_message['type'] == 'stream' else None)
+                    info['message_content'] = orig_message['content']
+
+                    db_initial_feedback = "*Updating databases...*"
+                    db_request = {
+                        "type": orig_message['type'],
+                        "to": orig_message['sender_email'] if orig_message['type'] == 'private' else orig_message['display_recipient'],
+                        "subject": orig_message.get('subject', ''),
+                        "content": db_initial_feedback
+                    }
+                    db_response = self.client.send_message(db_request)
+                    db_message_id = db_response.get('id')
+
+                    update_result = self.try_update_databases(info)
+                    self.client.update_message({
+                        "message_id": db_message_id,
+                        "content": update_result
+                    })
+
+                threading.Thread(target=update_and_notify, args=(paper_info, message)).start()
 
 
     def send_message_to_zulip(self, response_message, message_data):
