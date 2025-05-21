@@ -4,8 +4,17 @@ import re
 import threading
 
 def replace_single_dollar(s):
+    def repl(match):
+        repl.counter += 1
+        if repl.counter % 2 == 1:
+            return '$$'
+        else:
+            return '$$&#x200B;'
+    repl.counter = 0
+
     pattern = r'(?<!\$)\$(?!\$)'
-    return re.sub(pattern, '$$&#x200B;', s)
+    return re.sub(pattern, repl, s)
+
 
 class zulipHandler:
 
