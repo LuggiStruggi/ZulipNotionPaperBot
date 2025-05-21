@@ -5,7 +5,7 @@ import threading
 
 def replace_single_dollar(s):
     pattern = r'(?<!\$)\$(?!\$)'
-    return re.sub(pattern, '$$', s)
+    return re.sub(pattern, '$$&#x200B;', s)
 
 class zulipHandler:
 
@@ -21,7 +21,7 @@ class zulipHandler:
             self.database_handlers = []
 
     def info_to_message(self, title, authors, abstract, link, github=None):
-        message = f"``` spoiler {title}\n- **Authors**: {', '.join(authors)}\n- **Abstract**: {replace_single_dollar(abstract)}\n- **Link**: {link}\n"
+        message = f"``` spoiler {replace_single_dollar(title)}\n- **Authors**: {', '.join(authors)}\n- **Abstract**: {replace_single_dollar(abstract)}\n- **Link**: {link}\n"
         if github is not None:
             message += f"- **Official GitHub**: {github}\n"
         message += "```"
